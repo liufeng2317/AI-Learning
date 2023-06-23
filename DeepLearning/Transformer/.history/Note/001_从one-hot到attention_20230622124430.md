@@ -1,0 +1,103 @@
+<!--
+ * @Author: LiuFeng(USTC) : liufeng2317@mail.ustc.edu.cn
+ * @Date: 2023-06-22 12:43:12
+ * @LastEditors: LiuFeng
+ * @LastEditTime: 2023-06-22 12:44:27
+ * @FilePath: /Transformer/Note/001_从one-hot到attention.md
+ * @Description: 
+ * Copyright (c) 2023 by ${git_name} email: ${git_email}, All Rights Reserved.
+-->
+## 参考引用
+[https://e2eml.school/transformers.html#dot_product](https://e2eml.school/transformers.html#dot_product)
+后面的内容基本都来自这篇Blog，主要是基于这篇Blog的一些笔记
+
+这篇Blog主要介绍了：
+- one hot 编码
+- 内积（点积）
+- 矩阵内积
+- 一阶序列模型（马尔科夫链）
+- 二阶序列模型（二阶马尔科夫链）
+- 二阶跳跃序列模型
+- 掩码（masking）
+- 矩阵乘法表示的注意力
+- 二阶序列模型的矩阵乘法
+
+## 1. one-hot 编码
+将已经有的词库用0-1进行标识的方法
+![](Md_img/2022-04-12-20-24-31.png)
+
+## 2. Dot Product 点积
+向量对应位置相乘再求和
+![](Md_img/2022-04-12-20-25-43.png)
+
+## 3. Matrix multiplication 矩阵乘法
+线代基础
+![](Md_img/2022-04-12-20-27-11.png)
+
+## 4. First order sequence model 一阶序列模型
+
+如果我们有三个句子：
+  
+> Show me my directories please.
+> Show me my files please.
+> Show me my photos please.
+
+对应的字典（词库）就是：
+> {directories, files, me, my, photos, please, show}.
+
+根据这三个句子，我们假设每一个字只和前一个字相关（==马尔科夫链定义==）。对于上面的词库我们可以发现除了`directories、files、photos`这几个词的前一个词都是`my`，其他词的前一个词确定了下一个词就对应确定了：
+![](Md_img/2022-04-12-20-34-18.png)
+
+用转移矩阵进行表示上面这张图（一行表示行首下一个词出现的概率）
+![](Md_img/2022-04-12-20-36-21.png)
+很直观地可以发现，除了my后面接的词语是零点几地概率，其他词语后面接的都是0/1的概率
+
+如果我们只想看看my后面接的各个词语的概率，可以使用前面的one-hot表示的词库对转移矩阵求一下内积
+![](Md_img/2022-04-12-20-39-40.png)
+
+## 5.Second order sequence model 二阶序列模型
+由于马尔科夫链下一个词语至于前一个词相关，这样其实是限制了我们对下一个词语的预测的。比如下面这种情况
+> Check whether the battery ran down please.
+> Check whether the program ran please
+
+这两个句子`run`后面跟着的词语是`down`还是`please`其实最核心的是并不直接相连的`battery`和`program`。用下图来直观表示
+![](Md_img/2022-04-12-20-42-58.png)
+
+
+解决这个问题最直接的想法是提高马尔科夫链的阶数，如果我们增加到二阶，也就是对下一个词语的预测我们都会看看其前面两个词是什么：
+![](Md_img/2022-04-12-20-45-13.png)
+
+这两就相当于我们需要对词汇表内的全部词语进行两两排列组合，然后写出一阶一样的转移矩阵
+
+==问题在于，这样的排列组合极大地提升了我们的成本，如果我们词汇表内有N个词语，那么我们转换矩阵的行数是$N^2$==
+
+## 6. Second order sequence model with skips
+一个简单的想法去解决二阶序列模型的问题就是我们只关心我们要预测的词前面一个词和任意一个词的组合的概率：
+![](Md_img/2022-04-12-20-49-11.png)
+
+在这里就是：我们只看`ran`和其他各个词的组合对预测结果的影响。
+
+还是用转换矩阵来进行表示就是
+![](Md_img/2022-04-12-20-50-44.png)
+
+如果需要推断`ran`后面跟的到底时哪一个值，此时我们需要对这些vote的列进行求和累加，比如现在我们分别累加的结果是`down`是5，而`please`是4。那么一般而言我们就选择`down`了。
+
+==但是问题在于如果序列非常长，最终累加的结果将会非常相近，因为大多数的信息起始都是对我们的判断无关的（比如我们这里的判断只是和program、battery紧密相关）==
+
+然后这里其实就提出了我们需要的一个概念——注意力
+
+## 7. Masking 掩码
+上面我们得到了最近一个词语和其前面全部词语组成的二阶序列表示
+
+![](Md_img/2022-04-12-21-07-07.png)
+有的是0的原因在于：不能用run后面的词来进行强行组合嘛，这样就作弊了
+
+然后我们上面分析了，除了`program`和`battery`是相关参数，其他都是无关量，那么我们构建一个mask，将这些无关量也都置零
+![](Md_img/2022-04-12-21-09-06.png)
+
+然后我们就得到了一个非常简单的二阶转移矩阵
+![](Md_img/2022-04-12-21-09-39.png)
+
+==其表示了，只要`ran`前面有一个`battery`，那么我们下一个词就是`down`，反之前面有一个`program`,下一个词就是`please`==
+
+上面整个挑选mask的过程，其实就是我们说的transformer中提到的注意力。
