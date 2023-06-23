@@ -4,6 +4,8 @@
 
 #### 1.1 GAN
 
+GAN系列包括原始GAN、DCGAN、WGAN、WGAN-GP、CycleGAN，相关代码正在更新；实验用数据主要为MNIST数据和CIFAR数据
+
 [INIT GAN](./DeepLearning/GAN/MNIST/train_MNIST_initGAN.ipynb)
 
 [DCGAN](./DeepLearning/GAN/MNIST/train_MNIST_DCGAN.ipynb)
@@ -11,6 +13,8 @@
 [WGAN](./DeepLearning/GAN/MNIST/train_MNIST_WGAN.ipynb)
 
 [WGAN-GP](./DeepLearning/GAN/MNIST/train_MNIST_WGAN_gp.ipynb)
+
+[Cycle-GAN](./DeepLearning/GAN/CycleGAN/CycleGAN.ipynb)
 
 #### 1.2 Transformer
 
